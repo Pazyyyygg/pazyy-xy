@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pazyy xy - TikTok Video & Photo Downloader</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- JSZip & FileSaver for downloading all slide photos as ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        iosBg: '#000000',
+                        iosCard: 'rgba(28, 28, 30, 0.75)',
+                        iosCardBorder: 'rgba(255, 255, 255, 0.12)',
+                        iosInput: 'rgba(44, 44, 46, 0.8)',
+                        iosAccent: '#0A84FF',
+                        iosAccentHover: '#007AFF',
+                        iosSuccess: '#30D158',
+                        iosDanger: '#FF453A',
+                        iosWarning: '#FFD60A'
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #000000;
+            color: #F2F2F7;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* iOS Glassmorphism Card Effect */
+        .ios-glass {
+            background: rgba(28, 28, 30, 0.65);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .ios-glass-header {
+            background: rgba(18, 18, 18, 0.7);
+            backdrop-filter: blur(25px) saturate(200%);
+            -webkit-backdrop-filter: blur(25px) saturate(200%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* iOS Input & Buttons */
+        .ios-input {
+            background: rgba(44, 44, 46, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .ios-input:focus {
+            border-color: #0A84FF;
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.25);
+            background: rgba(44, 44, 46, 0.85);
+        }
+
+        .ios-btn-primary {
+            background: linear-gradient(135deg, #0A84FF 0%, #0066CC 100%);
+            box-shadow: 0 4px 15px rgba(10, 132, 255, 0.35);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .ios-btn-primary:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(10, 132, 255, 0.2);
+        }
+
+        .ios-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .ios-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .ios-btn-secondary:active {
+            transform: scale(0.96);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Animated Ambient Background Glow */
+        .ambient-glow {
+            position: fixed;
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(10, 132, 255, 0.18) 0%, rgba(255, 45, 85, 0.12) 50%, rgba(0,0,0,0) 70%);
+            filter: blur(60px);
+            z-index: -1;
+            pointer-events: none;
+            animation: floatGlow 12s infinite alternate ease-in-out;
+        }
+
+        @keyframes floatGlow {
+            0% { transform: translate(-10%, -10%) scale(1); }
+            50% { transform: translate(30%, 20%) scale(1.2); }
+            100% { transform: translate(-20%, 30%) scale(0.9); }
+        }
+
+        /* Shimmer Loading Animation */
+        .shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.8s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* Smooth Toast Notification */
+        #toast {
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Responsive image aspect ratio fix */
+        .aspect-tiktok {
+            aspect-ratio: 9 / 16;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-iosAccent selection:text-white pb-10">
+
+    <!-- Ambient Glow Backgrounds -->
+    <div class="ambient-glow top-10 left-10"></div>
+    <div class="ambient-glow bottom-20 right-10" style="animation-delay: -6s;"></div>
+
+    <!-- Top Navigation / Header -->
+    <header class="sticky top-0 z-40 w-full ios-glass-header px-4 py-3.5 mb-6">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-pink-500 flex items-center justify-center shadow-lg shadow-blue-500/20 ring-1 ring-white/20">
+                    <i class="fa-brands fa-tiktok text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Pazyy xy
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-semibold border border-blue-500/30">v2.5 PRO</span>
+                    </h1>
+                    <p class="text-xs text-gray-400 font-normal">TikTok Video & Photo Downloader</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-2">
+                <button onclick="clearHistory()" class="ios-btn-secondary p-2.5 rounded-xl text-gray-300 hover:text-white text-xs font-medium flex items-center gap-1.5" title="Bersihkan Riwayat">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto w-full px-4 flex-1">
+        
+        <!-- Hero Title -->
+        <div class="text-center my-6 sm:my-8 space-y-2">
+            <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+                Unduh Video & Photo Slide TikTok
+            </h2>
+            <p class="text-sm sm:text-base text-gray-400 max-w-md mx-auto">
+                Tanpa watermark, kualitas HD jernih, dan simpan slide foto sekaligus dengan cepat.
+            </p>
+        </div>
+
+        <!-- Input Section Card -->
+        <div class="ios-glass rounded-3xl p-4 sm:p-6 shadow-2xl mb-8 relative overflow-hidden">
+            <form id="downloadForm" class="space-y-4" onsubmit="event.preventDefault(); processTikTokUrl();">
+                <div class="relative flex items-center">
+                    <div class="absolute left-4 text-gray-400">
+                        <i class="fa-solid fa-link text-lg"></i>
+                    </div>
+                    <input 
+                        type="url" 
+                        id="tiktokUrl" 
+                        placeholder="Tempel tautan TikTok di sini (Video atau Foto)..." 
+                        required
+                        class="ios-input w-full pl-11 pr-24 py-4 rounded-2xl text-sm sm:text-base text-white placeholder-gray-500 outline-none"
+                    >
+                    
+                    <!-- Action buttons inside input -->
+                    <div class="absolute right-3 flex items-center gap-1.5">
+                        <button 
+                            type="button" 
+                            id="clearBtn"
+                            onclick="clearInput()" 
+                            class="hidden text-gray-400 hover:text-white p-2 text-sm transition-opacity"
+                            title="Hapus"
+                        >
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="pasteClipboard()" 
+                            class="ios-btn-secondary px-3 py-1.5 rounded-xl text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1.5"
+                        >
+                            <i class="fa-solid fa-paste"></i>
+                            <span>Tempel</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button 
+                    type="submit" 
+                    id="submitBtn" 
+                    class="ios-btn-primary w-full py-4 rounded-2xl text-white font-semibold text-base tracking-wide flex items-center justify-center gap-2"
+                >
+                    <i class="fa-solid fa-circle-arrow-down text-lg"></i>
+                    <span>Proses Tautan</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Loading Indicator Skeleton -->
+        <div id="loadingState" class="hidden ios-glass rounded-3xl p-6 mb-8 space-y-6">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full shimmer flex-shrink-0"></div>
+                <div class="space-y-2 flex-1">
+                    <div class="h-4 rounded-md shimmer w-1/3"></div>
+                    <div class="h-3 rounded-md shimmer w-1/2"></div>
+                </div>
+            </div>
+            <div class="h-48 rounded-2xl shimmer w-full"></div>
+            <div class="flex gap-3">
+                <div class="h-12 rounded-xl shimmer flex-1"></div>
+                <div class="h-12 rounded-xl shimmer flex-1"></div>
+            </div>
+            <p class="text-center text-xs text-gray-400 animate-pulse">Memproses & mengambil data media dari TikTok...</p>
+        </div>
+
+        <!-- Result Container -->
+        <div id="resultContainer" class="hidden">
+            
+            <!-- Result Type Selector Tab -->
+            <div class="flex bg-black/40 p-1.5 rounded-2xl border border-white/10 mb-6 max-w-xs mx-auto">
+                <button id="tabVideo" class="flex-1 py-2 px-4 rounded-xl text-xs font-semibold transition-all text-white bg-iosAccent shadow">
+                    <i class="fa-solid fa-play mr-1.5"></i> Media View
+                </button>
+                <button id="tabDetails" onclick="scrollToDetails()" class="flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all">
+                    <i class="fa-solid fa-info-circle mr-1.5"></i> Detail Stats
+                </button>
+            </div>
+
+            <!-- Author Header Card -->
+            <div class="ios-glass rounded-3xl p-5 mb-6 flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-3.5">
+                    <img id="authorAvatar" src="" alt="Avatar" class="w-13 h-13 w-12 h-12 rounded-full object-cover ring-2 ring-iosAccent/50">
+                    <div>
+                        <h3 id="authorNickname" class="font-bold text-white text-base leading-tight">Name</h3>
+                        <p id="authorUsername" class="text-xs text-blue-400 font-medium">@username</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-gray-300 bg-white/5 px-3.5 py-2 rounded-2xl border border-white/5">
+                    <span title="Suka"><i class="fa-solid fa-heart text-red-500 mr-1"></i><span id="statLikes">0</span></span>
+                    <span class="text-gray-600">|</span>
+                    <span title="Komentar"><i class="fa-solid fa-comment text-blue-400 mr-1"></i><span id="statComments">0</span></span>
+                    <span class="text-gray-600">|</span>
+                    <span title="Bagikan"><i class="fa-solid fa-share text-green-400 mr-1"></i><span id="statShares">0</span></span>
+                </div>
+            </div>
+
+            <!-- Title & Music Card -->
+            <div class="ios-glass rounded-3xl p-5 mb-6 space-y-3">
+                <p id="mediaTitle" class="text-sm sm:text-base text-gray-200 leading-relaxed font-normal">
+                    Caption video TikTok akan ditampilkan di sini...
+                </p>
+                <div class="flex items-center gap-2 text-xs text-gray-400 bg-black/30 p-2.5 rounded-xl border border-white/5">
+                    <i class="fa-solid fa-music text-iosAccent animate-spin-slow"></i>
+                    <span id="musicTitle" class="truncate flex-1">Suara Asli - TikTok Music</span>
+                </div>
+            </div>
+
+            <!-- VIEW 1: VIDEO MEDIA RESULT -->
+            <div id="videoResultCard" class="hidden ios-glass rounded-3xl p-5 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    <!-- Video Preview Container -->
+                    <div class="md:col-span-5 flex justify-center">
+                        <div class="relative w-full max-w-[240px] aspect-tiktok rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/10 group">
+                            <video id="videoPreview" controls class="w-full h-full object-cover rounded-2xl" poster="">
+                                Tampilan video tidak didukung oleh peramban Anda.
+                            </video>
+                        </div>
+                    </div>
+
+                    <!-- Video Download Buttons Options -->
+                    <div class="md:col-span-7 space-y-3 flex flex-col justify-center">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Opsi Unduhan Video</h4>
+                        
+                        <a id="btnDownloadNoWM" href="#" download target="_blank" onclick="trackDownload('Video HD (No WM)')" class="ios-btn-primary w-full py-3.5 px-4 rounded-2xl text-white font-semibold text-sm flex items-center justify-between group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                                    <i class="fa-solid fa-download text-white"></i>
+                                </div>
+                                <div class="text-left">
+                                    <p class="leading-none">Unduh HD (Tanpa Watermark)</p>
+                                    <span class="text-[10px] text-blue-100 font-normal">Kualitas Asli Terbaik</span>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-xs opacity-70 group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+
+                        <a id="btnDownloadWM" href="#" download target="_blank" onclick="trackDownload('Video Watermark')" class="ios-btn-secondary w-full py-3.5 px-4 rounded-2xl text-white font-semibold text-sm flex items-center justify-between group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-gray-300">
+                                    <i class="fa-solid fa-water-ladder"></i>
+                                </div>
+                                <div class="text-left">
+                                    <p class="leading-none">Unduh Dengan Watermark</p>
+                                    <span class="text-[10px] text-gray-400 font-normal">Versi standar TikTok</span>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-xs opacity-70 group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+
+                        <a id="btnDownloadAudio" href="#" download target="_blank" onclick="trackDownload('Audio MP3')" class="ios-btn-secondary w-full py-3.5 px-4 rounded-2xl text-white font-semibold text-sm flex items-center justify-between group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                                    <i class="fa-solid fa-music"></i>
+                                </div>
+                                <div class="text-left">
+                                    <p class="leading-none">Unduh Musik (MP3)</p>
+                                    <span class="text-[10px] text-gray-400 font-normal">Audio Suara Saja</span>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-xs opacity-70 group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: PHOTO SLIDE MEDIA RESULT -->
+            <div id="photoResultCard" class="hidden space-y-6 mb-6">
+                
+                <!-- Batch Download Action Card -->
+                <div class="ios-glass rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h4 class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-images text-blue-400"></i>
+                            Slide Foto TikTok (<span id="photoCount">0</span> Gambar)
+                        </h4>
+                        <p class="text-xs text-gray-400">Unduh gambar secara individual atau sekaligus sebagai berkas ZIP.</p>
+                    </div>
+                    <button id="btnDownloadAllZip" onclick="downloadAllPhotosZip()" class="ios-btn-primary w-full sm:w-auto px-5 py-3 rounded-2xl text-white text-xs font-semibold flex items-center justify-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-file-zipper text-sm"></i>
+                        <span>Unduh Semua Foto (ZIP)</span>
+                    </button>
+                </div>
+
+                <!-- Photos Grid Gallery -->
+                <div id="photoGalleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <!-- Photo Items populated via JavaScript -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Feature Highlights & Instructions -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 my-10">
+            <div class="ios-glass rounded-2xl p-4 text-center space-y-2">
+                <div class="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto text-lg border border-blue-500/20">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <h4 class="text-sm font-bold text-white">Super Cepat</h4>
+                <p class="text-xs text-gray-400">Proses konversi kilat langsung ke perangkat Anda.</p>
+            </div>
+            <div class="ios-glass rounded-2xl p-4 text-center space-y-2">
+                <div class="w-10 h-10 rounded-2xl bg-pink-500/10 text-pink-400 flex items-center justify-center mx-auto text-lg border border-pink-500/20">
+                    <i class="fa-solid fa-ban"></i>
+                </div>
+                <h4 class="text-sm font-bold text-white">Tanpa Watermark</h4>
+                <p class="text-xs text-gray-400">Dapatkan video bersih tanpa logo TikTok yang mengganggu.</p>
+            </div>
+            <div class="ios-glass rounded-2xl p-4 text-center space-y-2">
+                <div class="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center mx-auto text-lg border border-purple-500/20">
+                    <i class="fa-solid fa-photo-film"></i>
+                </div>
+                <h4 class="text-sm font-bold text-white">Support Slide Foto</h4>
+                <p class="text-xs text-gray-400">Mendukung pengunduhan postingan album foto slide TikTok.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-4xl mx-auto w-full px-4 text-center space-y-2 pt-6 border-t border-white/5">
+        <p class="text-xs text-gray-500">
+            &copy; 2026 <span class="font-semibold text-gray-300">Pazyy xy</span>. Hak Cipta Dilindungi.
+        </p>
+        <p class="text-[11px] text-gray-600">
+            Situs ini tidak berafiliasi resmi dengan TikTok Inc. Dibuat dengan antarmuka iOS Dark Style.
+        </p>
+    </footer>
+
+    <!-- iOS Style Floating Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transform translate-y-20 opacity-0 pointer-events-none">
+        <div class="ios-glass px-5 py-3 rounded-2xl shadow-2xl border border-white/15 flex items-center gap-3">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-green-400 text-lg"></i>
+            <span id="toastMessage" class="text-xs font-semibold text-white tracking-wide">Pesan Toast</span>
+        </div>
+    </div>
+
+    <script>
+        // Global variables storing parsed images for ZIP action
+        let currentPhotoList = [];
+        let currentAuthorName = "TikTok_Media";
+
+        // DOM Element Cache
+        const tiktokUrlInput = document.getElementById('tiktokUrl');
+        const clearBtn = document.getElementById('clearBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingState = document.getElementById('loadingState');
+        const resultContainer = document.getElementById('resultContainer');
+        const videoResultCard = document.getElementById('videoResultCard');
+        const photoResultCard = document.getElementById('photoResultCard');
+
+        // Monitor input field changes to toggle clear button
+        tiktokUrlInput.addEventListener('input', () => {
+            if (tiktokUrlInput.value.trim() !== '') {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+        });
+
+        // Function to clear input field
+        function clearInput() {
+            tiktokUrlInput.value = '';
+            clearBtn.classList.add('hidden');
+            tiktokUrlInput.focus();
+        }
+
+        // Paste clipboard content
+        async function pasteClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    tiktokUrlInput.value = text;
+                    clearBtn.classList.remove('hidden');
+                    showToast('Tautan berhasil ditempel!', 'success');
+                }
+            } catch (err) {
+                showToast('Gagal membaca papan klip. Berikan izin akses!', 'danger');
+            }
+        }
+
+        // Main Process URL Handler
+        async function processTikTokUrl() {
+            const url = tiktokUrlInput.value.trim();
+            if (!url) {
+                showToast('Silakan masukkan URL TikTok!', 'danger');
+                return;
+            }
+
+            // Hide previous results and show loader
+            resultContainer.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-70');
+
+            try {
+                // Fetch from TikWM Public API
+                const apiEndpoint = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}?hd=1`;
+                const response = await fetch(apiEndpoint);
+                const result = await response.json();
+
+                if (result && result.code === 0) {
+                    renderTikTokData(result.data);
+                    showToast('Data TikTok berhasil diambil!', 'success');
+                } else {
+                    showToast(result.msg || 'Gagal mengambil data dari TikTok. Pastikan tautan valid!', 'danger');
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                showToast('Terjadi kesalahan koneksi saat mengambil data.', 'danger');
+            } finally {
+                loadingState.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-70');
+            }
+        }
+
+        // Render Received TikTok Data to UI
+        function renderTikTokData(data) {
+            // Set Author Details
+            document.getElementById('authorAvatar').src = data.author.avatar || 'https://placehold.co/100x100/1c1c1e/ffffff?text=User';
+            document.getElementById('authorNickname').textContent = data.author.nickname || 'Pengguna TikTok';
+            document.getElementById('authorUsername').textContent = `@${data.author.unique_id || 'username'}`;
+            currentAuthorName = data.author.unique_id || 'TikTok_User';
+
+            // Stats
+            document.getElementById('statLikes').textContent = formatNumber(data.digg_count || 0);
+            document.getElementById('statComments').textContent = formatNumber(data.comment_count || 0);
+            document.getElementById('statShares').textContent = formatNumber(data.share_count || 0);
+
+            // Title & Music
+            document.getElementById('mediaTitle').textContent = data.title || 'Tanpa Keterangan';
+            document.getElementById('musicTitle').textContent = data.music_info?.title ? `${data.music_info.title} - ${data.music_info.author}` : 'Suara Asli';
+
+            // Check if post is Photo Slide Gallery OR Video
+            if (data.images && data.images.length > 0) {
+                // PHOTO SLIDE MODE
+                videoResultCard.classList.add('hidden');
+                photoResultCard.classList.remove('hidden');
+                
+                currentPhotoList = data.images;
+                document.getElementById('photoCount').textContent = data.images.length;
+                
+                const galleryGrid = document.getElementById('photoGalleryGrid');
+                galleryGrid.innerHTML = '';
+
+                data.images.forEach((imgUrl, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'ios-glass rounded-2xl overflow-hidden p-2 flex flex-col justify-between space-y-2 border border-white/10 group';
+                    card.innerHTML = `
+                        <div class="relative aspect-square rounded-xl overflow-hidden bg-black/50">
+                            <img src="${imgUrl}" alt="Slide ${index + 1}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
+                            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white">
+                                #${index + 1}
+                            </span>
+                        </div>
+                        <a href="${imgUrl}" download="TikTok_Photo_${index + 1}.jpg" target="_blank" class="ios-btn-secondary w-full py-2 rounded-xl text-[11px] font-semibold text-center text-blue-400 hover:text-blue-300 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-download"></i> Unduh
+                        </a>
+                    `;
+                    galleryGrid.appendChild(card);
+                });
+
+            } else {
+                // VIDEO MODE
+                photoResultCard.classList.add('hidden');
+                videoResultCard.classList.remove('hidden');
+
+                const videoPlayer = document.getElementById('videoPreview');
+                const videoSrc = data.play || data.wmplay;
+                videoPlayer.src = videoSrc;
+                videoPlayer.poster = data.cover || '';
+
+                // Links
+                document.getElementById('btnDownloadNoWM').href = data.hdplay || data.play || '#';
+                document.getElementById('btnDownloadWM').href = data.wmplay || data.play || '#';
+                document.getElementById('btnDownloadAudio').href = data.music || '#';
+            }
+
+            resultContainer.classList.remove('hidden');
+            resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Fallback Demo Data Generator for Testing
+        function renderFallbackDemoData(url) {
+            const isPhoto = url.includes('/photo/') || url.includes('demo=photo');
+            
+            const mockData = {
+                author: {
+                    nickname: "Pazyy xy Official",
+                    unique_id: "pazyy.xy",
+                    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+                },
+                digg_count: 142500,
+                comment_count: 3890,
+                share_count: 12400,
+                title: isPhoto 
+                    ? "Kumpulan foto estetis terbaru untuk ide konten kalian! 📸✨ #aesthetic #photoslide #pazyy" 
+                    : "Tutorial membuat video cinematic iOS Dark Mode di TikTok! 🔥 Save & share video ini. #fyp #ios #pazyy",
+                music_info: {
+                    title: "Chill Lofi Beats - Aesthetic Vibe",
+                    author: "Pazyy Music"
+                },
+                play: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                wmplay: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                hdplay: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                cover: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80",
+                images: isPhoto ? [
+                    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
+                    "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=800&auto=format&fit=crop&q=80",
+                    "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
+                    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80"
+                ] : null
+            };
+
+            renderTikTokData(mockData);
+        }
+
+        // Batch Download Photo Slide as ZIP
+        async function downloadAllPhotosZip() {
+            if (!currentPhotoList || currentPhotoList.length === 0) {
+                showToast('Tidak ada foto untuk diunduh!', 'danger');
+                return;
+            }
+
+            const zipBtn = document.getElementById('btnDownloadAllZip');
+            const originalContent = zipBtn.innerHTML;
+            zipBtn.disabled = true;
+            zipBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Membuat ZIP...</span>`;
+
+            try {
+                const zip = new JSZip();
+                const folder = zip.folder("Pazyy_xy_Photos");
+
+                // Download image blobs and add to zip
+                for (let i = 0; i < currentPhotoList.length; i++) {
+                    const imgUrl = currentPhotoList[i];
+                    try {
+                        const res = await fetch(imgUrl);
+                        const blob = await res.blob();
+                        folder.file(`Photo_${i + 1}.jpg`, blob);
+                    } catch (e) {
+                        console.warn(`Gagal mengambil gambar ${i + 1} untuk ZIP:`, e);
+                    }
+                }
+
+                const content = await zip.generateAsync({ type: "blob" });
+                saveAs(content, `Pazyy_xy_${currentAuthorName}_Photos.zip`);
+                showToast('Penyimpanan berkas ZIP berhasil!', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal membuat berkas ZIP.', 'danger');
+            } finally {
+                zipBtn.disabled = false;
+                zipBtn.innerHTML = originalContent;
+            }
+        }
+
+        // Track download clicks
+        function trackDownload(type) {
+            showToast(`Mengunduh berkas ${type}...`, 'success');
+        }
+
+        // Clear History/Reset UI
+        function clearHistory() {
+            tiktokUrlInput.value = '';
+            clearBtn.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+            showToast('Formulir berhasil direset!', 'info');
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.textContent = message;
+
+            if (type === 'success') {
+                toastIcon.className = 'fa-solid fa-circle-check text-green-400 text-lg';
+            } else if (type === 'danger') {
+                toastIcon.className = 'fa-solid fa-circle-exclamation text-red-400 text-lg';
+            } else if (type === 'warning') {
+                toastIcon.className = 'fa-solid fa-triangle-exclamation text-yellow-400 text-lg';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-info text-blue-400 text-lg';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3200);
+        }
+
+        // Helper Number Formatter (e.g., 142500 -> 142.5K)
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function scrollToDetails() {
+            showToast('Detail statistik ditampilkan di bagian atas.', 'info');
+        }
+    </script>
+</body>
+</html>
